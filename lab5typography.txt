@@ -1,0 +1,293 @@
+
+--  Создание базы данных (CREATE DATABASE)
+CREATE DATABASE typography;
+USE typography_db;
+
+-- Создание таблиц и связей (CREATE TABLE)
+CREATE TABLE workshop (
+    id_workshop INT PRIMARY KEY,
+    title_workshop VARCHAR(150) NOT NULL
+);
+
+CREATE TABLE employee (
+    id_employee INT PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    position VARCHAR(100) NOT NULL,
+    id_workshop INT NOT NULL,
+    FOREIGN KEY (id_workshop) REFERENCES workshop(id_workshop)
+);
+
+CREATE TABLE customer (
+    id_customer INT PRIMARY KEY,
+    name_customer VARCHAR(150) NOT NULL,
+    inn_customer VARCHAR(12) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE material (
+    id_material INT PRIMARY KEY,
+    title_material VARCHAR(150) NOT NULL
+);
+
+CREATE TABLE equipment (
+    id_equipment INT PRIMARY KEY,
+    title_equipment VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE tech_card (
+    id_tech_card INT PRIMARY KEY,
+    product_type VARCHAR(100) NOT NULL,
+    format_size VARCHAR(50) NOT NULL,
+    id_material INT NOT NULL,
+    FOREIGN KEY (id_material) REFERENCES material(id_material)
+);
+
+CREATE TABLE print_order (
+    id_order INT PRIMARY KEY,
+    date_created DATETIME NOT NULL,
+    date_deadline DATETIME NOT NULL,
+    id_customer INT NOT NULL,
+    id_employee INT NOT NULL,
+    FOREIGN KEY (id_customer) REFERENCES customer(id_customer),
+    FOREIGN KEY (id_employee) REFERENCES employee(id_employee)
+);
+
+CREATE TABLE order_detail (
+    id_detail INT PRIMARY KEY,
+    id_order INT NOT NULL,
+    id_tech_card INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (id_order) REFERENCES print_order(id_order),
+    FOREIGN KEY (id_tech_card) REFERENCES tech_card(id_tech_card)
+);
+
+CREATE TABLE production_task (
+    id_task INT PRIMARY KEY,
+    id_detail INT NOT NULL,
+    id_equipment INT NOT NULL,
+    FOREIGN KEY (id_detail) REFERENCES order_detail(id_detail),
+    FOREIGN KEY (id_equipment) REFERENCES equipment(id_equipment)
+);
+
+-- Изменение структуры таблиц (ALTER TABLE)
+ALTER TABLE production_task ADD work_type VARCHAR(50);
+
+-- Вставка записей (INSERT INTO)
+INSERT INTO workshop VALUES 
+(1, 'Цех офсетной печати'), 
+(2, 'Цех цифровой печати'), 
+(3, 'Участок постпресса');
+
+INSERT INTO employee VALUES 
+(1, 'Макаров Вадим Игоревич', 'Начальник диспетчерского отдела', 1),
+(2, 'Иванов Алексей Сергеевич', 'Старший печатник', 1),
+(3, 'Сидорова Елена Михайловна', 'Менеджер продаж', 2);
+
+INSERT INTO customer VALUES 
+(1, 'ООО "Реклама-Плюс"', '7701234567', 'город Москва, улица Ленина 1', '+7 495 111-22-33'),
+(2, 'ПАО "Сбербанк"', '7707083893', 'город Москва, улица Вавилова 19', '+7 495 500-55-50'),
+(3, 'ООО "Тест-Полиграф"', '5901234560', 'город Пермь, улица Мира 10', '+7 342 200-00-00');
+
+INSERT INTO material VALUES 
+(1, 'Бумага мелованная матовая'), 
+(2, 'Бумага офсетная'), 
+(3, 'Картон упаковочный');
+
+INSERT INTO equipment VALUES 
+(1, 'Офсетная печатная машина'), 
+(2, 'Цифровая печатная машина'), 
+(3, 'Резак гильотинный');
+
+INSERT INTO tech_card VALUES 
+(1, 'Календарь настенный', 'А3', 1),
+(2, 'Бланк фирменный', 'А4', 2),
+(3, 'Упаковка самосборная', 'Индивидуальный', 3);
+
+INSERT INTO print_order VALUES 
+(1001, '2025-11-01 09:00:00', '2025-11-10 18:00:00', 1, 3),
+(1002, '2025-11-02 10:30:00', '2025-11-05 18:00:00', 2, 3);
+
+INSERT INTO order_detail VALUES 
+(1, 1001, 1, 5000, 225000.00),
+(2, 1001, 2, 10000, 45000.00),
+(3, 1002, 3, 2000, 180000.00);
+
+INSERT INTO production_task VALUES 
+(1, 1, 1, 'Печать'),
+(2, 1, 3, 'Печать'),
+(3, 2, 2, 'Печать'),
+(4, 3, 1, 'Печать');
+
+-- Обновление записей (UPDATE)
+UPDATE order_detail SET price = 250000.00 WHERE id_detail = 1;
+UPDATE production_task SET work_type = 'Постпресс' WHERE id_task = 2;
+
+-- Удаление записей (DELETE FROM)
+DELETE FROM customer WHERE id_customer = 3;
+
+-- Создание пользователей и наделение их правами (CREATE USER, GRANT)
+CREATE USER 'sidorova'@'localhost' IDENTIFIED BY '12345';
+GRANT SELECT, INSERT, UPDATE ON typography_db.customer TO 'sidorova'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON typography_db.print_order TO 'sidorova'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON typography_db.order_detail TO 'sidorova'@'localhost';
+
+CREATE USER 'makarov'@'localhost' IDENTIFIED BY '12345';
+GRANT SELECT, UPDATE ON typography_db.print_order TO 'makarov'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON typography_db.production_task TO 'makarov'@'localhost';
+
+FLUSH PRIVILEGES;
+
+-- 1.8. Выгрузка метаданных таблиц (DESCRIBE)
+DESCRIBE workshop;
+DESCRIBE employee;
+DESCRIBE customer;
+DESCRIBE material;
+DESCRIBE equipment;
+DESCRIBE tech_card;
+DESCRIBE print_order;
+DESCRIBE order_detail;
+DESCRIBE production_task;
+
+
+-- Неявное соединение таблиц с фильтром (WHERE) и сортировкой (ORDER BY)
+SELECT po.id_order, c.name_customer, tc.product_type, od.price
+FROM print_order po, customer c, order_detail od, tech_card tc
+WHERE po.id_customer = c.id_customer
+  AND od.id_order = po.id_order
+  AND od.id_tech_card = tc.id_tech_card
+  AND od.price >= 45000
+ORDER BY od.price DESC;
+
+-- Явное соединение таблиц (JOIN)
+SELECT po.id_order, c.name_customer, e.full_name, tc.product_type, od.quantity, od.price
+FROM print_order po
+JOIN customer c ON po.id_customer = c.id_customer
+JOIN employee e ON po.id_employee = e.id_employee
+JOIN order_detail od ON po.id_order = od.id_order
+JOIN tech_card tc ON od.id_tech_card = tc.id_tech_card;
+
+--. Агрегирующие операции (SUM, AVG, COUNT, MAX, MIN)
+SELECT 
+    COUNT(*) AS total_items,
+    SUM(price) AS total_sum,
+    AVG(price) AS avg_price,
+    MIN(price) AS min_price,
+    MAX(price) AS max_price
+FROM order_detail;
+
+-- Группировка GROUP BY и фильтрация HAVING
+SELECT id_order, COUNT(*) AS count_items, SUM(price) AS total_sum
+FROM order_detail
+GROUP BY id_order
+HAVING total_sum > 100000;
+
+-- Вложенные подзапросы (IN, ALL)
+-- Подзапрос с IN: клиенты с крупными тиражами (от 5 000 экз.)
+SELECT id_customer, name_customer, phone
+FROM customer
+WHERE id_customer IN (
+    SELECT po.id_customer
+    FROM print_order po
+    JOIN order_detail od ON po.id_order = od.id_order
+    WHERE od.quantity >= 5000
+);
+
+-- Подзапрос с ALL: позиции дороже каждой из позиций заказа № 1002
+SELECT id_detail, id_order, price
+FROM order_detail
+WHERE price > ALL (
+    SELECT price
+    FROM order_detail
+    WHERE id_order = 1002
+);
+
+-- Функции управления потоком (IF, CASE)
+-- Функция IF: деление тиражей на оптовые и стандартные
+SELECT 
+    id_detail,
+    quantity,
+    price,
+    IF(quantity >= 3000, 'Крупный оптовый тираж', 'Стандартный тираж') AS order_scale
+FROM order_detail;
+
+-- Оператор CASE: категоризация маржинальности заказа
+SELECT 
+    id_order,
+    price,
+    CASE 
+        WHEN price >= 200000.00 THEN 'Категория А: VIP-заказ'
+        WHEN price >= 100000.00 THEN 'Категория B: Крупный заказ'
+        ELSE 'Категория C: Базовый заказ'
+    END AS price_category
+FROM order_detail;
+
+-- Представление (CREATE VIEW) и временное представление (WITH / CTE)
+-- Постоянное представление на популярный запрос сводки заказов
+CREATE VIEW vw_popular_orders_summary AS
+SELECT 
+    po.id_order,
+    c.name_customer,
+    tc.product_type,
+    tc.format_size,
+    od.quantity,
+    od.price,
+    po.date_deadline
+FROM print_order po
+JOIN customer c ON po.id_customer = c.id_customer
+JOIN order_detail od ON po.id_order = od.id_order
+JOIN tech_card tc ON od.id_tech_card = tc.id_tech_card;
+
+SELECT * FROM vw_popular_orders_summary;
+
+-- Временное представление с оператором WITH
+WITH client_total_revenue AS (
+    SELECT 
+        c.id_customer,
+        c.name_customer,
+        SUM(od.price) AS total_spent
+    FROM customer c
+    JOIN print_order po ON c.id_customer = po.id_customer
+    JOIN order_detail od ON po.id_order = od.id_order
+    GROUP BY c.id_customer, c.name_customer
+)
+SELECT name_customer, total_spent
+FROM client_total_revenue
+WHERE total_spent > 100000.00;
+
+-- Анализ плана запроса (EXPLAIN) и создание индексов (CREATE INDEX)
+EXPLAIN SELECT * FROM order_detail WHERE price > 100000.00;
+
+CREATE INDEX idx_order_detail_price ON order_detail(price);
+CREATE INDEX idx_order_detail_fk_order ON order_detail(id_order);
+
+EXPLAIN SELECT * FROM order_detail WHERE price > 100000.00;
+
+-- Механизм транзакций (START TRANSACTION, COMMIT)
+START TRANSACTION;
+
+INSERT INTO print_order (id_order, date_created, date_deadline, id_customer, id_employee)
+VALUES (1003, NOW(), '2025-11-20 18:00:00', 1, 3);
+
+INSERT INTO order_detail (id_detail, id_order, id_tech_card, quantity, price)
+VALUES (4, 1003, 1, 3000, 150000.00);
+
+INSERT INTO production_task (id_task, id_detail, id_equipment, work_type)
+VALUES (5, 4, 1, 'Печать');
+
+COMMIT;
+
+-- Запрос через операторы PREPARE, EXECUTE, DEALLOCATE
+PREPARE stmt_high_value_orders FROM 
+    'SELECT po.id_order, c.name_customer, od.price 
+     FROM print_order po
+     JOIN customer c ON po.id_customer = c.id_customer
+     JOIN order_detail od ON po.id_order = od.id_order
+     WHERE od.price >= ?
+     ORDER BY od.price DESC';
+
+SET @min_price = 100000.00;
+EXECUTE stmt_high_value_orders USING @min_price;
+
+DEALLOCATE PREPARE stmt_high_value_orders;
